@@ -1,46 +1,36 @@
-const WebSocket = require('ws')
+const WebSocket = require('ws');
+const events = [];
+let lastestTimestamp = Date.now();
+const clients = new Set();
 
-const events = []
-let latestTimestamp = Date.now()
-
-const clients = new Set()
-
-const EventProducer = () => {
+const EventProducer = ()=> {
   const event = {
     id: Date.now(),
     timestamp: Date.now()
   }
-  events.push(event)
-  latestTimestamp = event.timestamp
-  
-  // 推送给所有连接着的socket
-  clients.forEach(client => {
-    client.ws.send(JSON.stringify(events.filter(event => event.timestamp > client.timestamp)))
-    client.timestamp = latestTimestamp
+  events.push(event);
+  lastestTimestamp = event.timestamp;
+
+  clients.forEach(client=> {
+    client.ws.send(JSON.stringify(events.filter(event=>event.timestamp > client.timestamp)));
+    client.timestamp = lastestTimestamp;
   })
 }
 
-// 每5秒生成一个新的事件
 setInterval(() => {
-  EventProducer()
-}, 5000)
+  EventProducer();
+}, 3000);
 
-// 启动socket服务器
-const wss = new WebSocket.Server({ port: 8080 })
+const wss = new WebSocket.Server({port: 8080})
 
-wss.on('connection', (ws, req) => {
-  console.log('client connected')
-
-  // 首次连接，推送现存事件
+wss.on('connection', (ws, req)=> {
+  console.log('client connected');
   ws.send(JSON.stringify(events))
-  
   const client = {
-    timestamp: latestTimestamp,
-    ws,
+    timestamp: lastestTimestamp,
+    ws
   }
-  clients.add(client)
-
-  ws.on('close', _ => {
-    clients.delete(client)
+  ws.on('close', _=> {
+    clients.delete(client);
   })
 })
